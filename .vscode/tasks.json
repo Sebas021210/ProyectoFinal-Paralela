@@ -1,0 +1,21 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Compilar CUDA",
+            "type": "shell",
+            "command": "nvcc",
+            "args": [
+                "-o",
+                "${workspaceFolder}/houghBase.exe",  // Nombre correcto del ejecutable
+                "${workspaceFolder}/houghBase.cu"          // Ruta correcta del archivo .cu
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"],
+            "detail": "Tarea para compilar un archivo CUDA"
+        }
+    ]
+}
