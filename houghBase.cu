@@ -159,10 +159,24 @@ int main (int argc, char **argv)
   cudaMemcpy (d_in, h_in, sizeof (unsigned char) * w * h, cudaMemcpyHostToDevice);
   cudaMemset (d_hough, 0, sizeof (int) * degreeBins * rBins);
 
+  // CUDA events for timing
+  cudaEvent_t start, stop;
+  float elapsedTime;
+  cudaEventCreate(&start);
+  cudaEventCreate(&stop);
+
+  cudaEventRecord(start, 0);
+
   // execution configuration uses a 1-D grid of 1-D blocks, each made of 256 threads
   //1 thread por pixel
   int blockNum = ceil (w * h / 256);
   GPU_HoughTran <<< blockNum, 256 >>> (d_in, w, h, d_hough, rMax, rScale, d_Cos, d_Sin);
+
+  cudaEventRecord(stop, 0);
+  cudaEventSynchronize(stop);
+  cudaEventElapsedTime(&elapsedTime, start, stop);
+
+  printf("Kernel execution time: %f ms\n", elapsedTime);
 
   // get results from device
   cudaMemcpy (h_hough, d_hough, sizeof (int) * degreeBins * rBins, cudaMemcpyDeviceToHost);
@@ -184,6 +198,9 @@ int main (int argc, char **argv)
   free(pcCos);
   free(pcSin);
   free(h_hough);
+
+  cudaEventDestroy(start);
+  cudaEventDestroy(stop);
 
   return 0;
 }
