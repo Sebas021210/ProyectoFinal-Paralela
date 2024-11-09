@@ -2,13 +2,14 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Compilar CUDA",
+            "label": "Compilar CUDA proyecto Hough",
             "type": "shell",
             "command": "nvcc",
             "args": [
                 "-o",
-                "${workspaceFolder}/houghBase.exe",  // Nombre correcto del ejecutable
-                "${workspaceFolder}/houghBase.cu"          // Ruta correcta del archivo .cu
+                "${workspaceFolder}/houghBase.exe", // Nombre correcto del ejecutable
+                "${workspaceFolder}/houghBase.cu", // Ruta correcta del archivo .cu
+                "${workspaceFolder}/pgm.cpp", // Ruta correcta del archivo .cpp
             ],
             "group": {
                 "kind": "build",

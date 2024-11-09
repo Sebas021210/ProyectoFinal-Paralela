@@ -15,6 +15,10 @@
 #include <string.h>
 #include "pgm.h"
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 const int degreeInc = 2;
 const int degreeBins = 180 / degreeInc;
 const int rBins = 100;
