@@ -1,3 +1,4 @@
+
 /*
  ============================================================================
  Author        : G. Barlas
@@ -61,17 +62,8 @@ void CPU_HoughTran(unsigned char *pic, int w, int h, int **acc) {
 
 //*****************************************************************
 // GPU kernel. One thread per image pixel is spawned.
-<<<<<<< HEAD
 __global__ void GPU_HoughTran(unsigned char *pic, int w, int h, int *acc, float rMax, float rScale) {
     extern __shared__ int localAcc[];
-=======
-// The accummulator memory needs to be allocated by the host in global memory
-__global__ void GPU_HoughTran (unsigned char *pic, int w, int h, int *acc, float rMax, float rScale, float *d_Cos, float *d_Sin)
-{
-  //TODO calcular: int gloID = ?
-  int gloID = blockIdx.x * blockDim.x + threadIdx.x;
-  if (gloID > w * h) return;      // in case of extra threads in block
->>>>>>> origin/main
 
     int locID = threadIdx.x;
     int gloID = blockIdx.x * blockDim.x + threadIdx.x;
@@ -261,7 +253,6 @@ int main(int argc, char **argv) {
     int blockNum = ceil(w * h / 256.0);
     GPU_HoughTran<<<blockNum, 256, degreeBins * rBins * sizeof(int)>>>(d_in, w, h, d_hough, rMax, rScale);
 
-<<<<<<< HEAD
     // Verificar errores de ejecución del kernel
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
@@ -271,54 +262,16 @@ int main(int argc, char **argv) {
 
     cudaDeviceSynchronize();
     printf("Kernel ejecutado correctamente\n");
-=======
-  // CUDA events for timing
-  cudaEvent_t start, stop;
-  float elapsedTime;
-  cudaEventCreate(&start);
-  cudaEventCreate(&stop);
-
-  cudaEventRecord(start, 0);
-
-  // execution configuration uses a 1-D grid of 1-D blocks, each made of 256 threads
-  //1 thread por pixel
-  int blockNum = ceil (w * h / 256);
-  GPU_HoughTran <<< blockNum, 256 >>> (d_in, w, h, d_hough, rMax, rScale, d_Cos, d_Sin);
-
-  cudaEventRecord(stop, 0);
-  cudaEventSynchronize(stop);
-  cudaEventElapsedTime(&elapsedTime, start, stop);
-
-  printf("Kernel execution time: %f ms\n", elapsedTime);
-
-  // get results from device
-  cudaMemcpy (h_hough, d_hough, sizeof (int) * degreeBins * rBins, cudaMemcpyDeviceToHost);
->>>>>>> origin/main
 
     cudaEventRecord(stop);
     cudaEventSynchronize(stop);
 
-<<<<<<< HEAD
     float milliseconds = 0;
     err = cudaEventElapsedTime(&milliseconds, start, stop);
     if (err != cudaSuccess) {
         fprintf(stderr, "Error al calcular el tiempo de ejecución: %s\n", cudaGetErrorString(err));
         return -1;
     }
-=======
-  // TODO clean-up
-  cudaFree(d_in);
-  cudaFree(d_hough);
-  cudaFree(d_Cos);
-  cudaFree(d_Sin);
-  free(cpuht);
-  free(pcCos);
-  free(pcSin);
-  free(h_hough);
-
-  cudaEventDestroy(start);
-  cudaEventDestroy(stop);
->>>>>>> origin/main
 
     printf("Tiempo de ejecución del kernel: %.3f ms\n", milliseconds);
 
