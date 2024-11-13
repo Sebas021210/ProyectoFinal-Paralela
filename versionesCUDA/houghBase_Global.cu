@@ -157,7 +157,7 @@ void drawDetectedLines(cv::Mat &image, int *acc, int w, int h, float rMax, float
     std_dev = sqrt(std_dev / total_values);
     
     // Establecer threshold dinámico más selectivo
-    int dynamic_threshold = (int)(mean + 3 * std_dev); // Aumentado a 3 desviaciones estándar
+    int dynamic_threshold = (int)(mean + 2 * std_dev); 
     threshold = std::max(dynamic_threshold, threshold);
     
     printf("Estadisticas del acumulador:\n");
@@ -325,7 +325,7 @@ int main(int argc, char **argv) {
     cv::cvtColor(img, colorImg, cv::COLOR_GRAY2BGR);
 
     // Establecer un threshold inicial razonable
-    int threshold = 100;
+    int threshold = 50;
 
     // Dibujar las líneas detectadas
     drawDetectedLines(colorImg, h_hough, w, h, rMax, rScale, threshold);
