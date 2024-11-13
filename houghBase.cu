@@ -14,7 +14,7 @@
 #include <cuda.h>
 #include <string.h>
 #include "pgm.h"
-#include <opencv2/opencv.hpp> // Incluir OpenCV para trabajar con imágenes
+#include <opencv2/opencv.hpp>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -25,16 +25,18 @@ const int degreeBins = 180 / degreeInc;
 const int rBins = 100;
 const float radInc = degreeInc * M_PI / 180;
 
+//*****************************************************************
 // Declaración de memoria constante para senos y cosenos
 __constant__ float d_Cos[degreeBins];
 __constant__ float d_Sin[degreeBins];
 
+//*****************************************************************
 // The CPU function returns a pointer to the accumulator
 void CPU_HoughTran(unsigned char *pic, int w, int h, int **acc) {
     printf("Iniciando CPU_HoughTran\n");
-    float rMax = sqrt(1.0 * w * w + 1.0 * h * h) / 2;
-    *acc = new int[rBins * degreeBins];
-    memset(*acc, 0, sizeof(int) * rBins * degreeBins);
+    float rMax = sqrt(1.0 * w * w + 1.0 * h * h) / 2; //(w^2 + h^2)/2, radio max equivalente a centro -> esquina
+    *acc = new int[rBins * degreeBins]; //el acumulador, conteo depixeles encontrados, 90*180/degInc = 9000
+    memset(*acc, 0, sizeof(int) * rBins * degreeBins); //init en ceros
     int xCent = w / 2;
     int yCent = h / 2;
     float rScale = 2 * rMax / rBins;
@@ -81,18 +83,17 @@ __global__ void GPU_HoughTran(unsigned char *pic, int w, int h, int *acc, float 
     extern __shared__ int localAcc[];
 
     int locID = threadIdx.x;
+
+    //TODO calcular: int gloID = ?
     int gloID = blockIdx.x * blockDim.x + threadIdx.x;
-
     if (gloID >= w * h) return;
-
-    // a) Inicializar locID usando los IDs de los hilos del bloque (ya definido arriba)
     
-    // b) Inicializar el acumulador local en memoria compartida
+    // Inicializar el acumulador local en memoria compartida
     for (int i = locID; i < degreeBins * rBins; i += blockDim.x) {
         localAcc[i] = 0;
     }
     
-    // c) Barrera de sincronización para asegurar que todos los hilos hayan inicializado localAcc
+    // Barrera de sincronización para asegurar que todos los hilos hayan inicializado localAcc
     __syncthreads();
 
     int xCent = w / 2;
@@ -105,21 +106,25 @@ __global__ void GPU_HoughTran(unsigned char *pic, int w, int h, int *acc, float 
             float r = xCoord * d_Cos[tIdx] + yCoord * d_Sin[tIdx];
             int rIdx = (r + rMax) / rScale;
             
-            // e) Incrementar el acumulador local utilizando operación atómica
+            // Incrementar el acumulador local utilizando operación atómica
             atomicAdd(&localAcc[rIdx * degreeBins + tIdx], 1);
         }
     }
     
-    // f) Barrera para asegurar que todos los hilos hayan completado la actualización de localAcc
+    // Barrera para asegurar que todos los hilos hayan completado la actualización de localAcc
     __syncthreads();
 
-    // g) Loop final para sumar valores de localAcc al acumulador global acc
+    // Loop final para sumar valores de localAcc al acumulador global acc
     for (int i = locID; i < degreeBins * rBins; i += blockDim.x) {
         atomicAdd(&acc[i], localAcc[i]);
     }
+
+    //TODO eventualmente cuando se tenga memoria compartida, copiar del local al global
+    //utilizar operaciones atomicas para seguridad
+    //faltara sincronizar los hilos del bloque en algunos lados
 }
 
-// Añadir esta función después de cargar la imagen y antes de la transformada de Hough
+// Función para verificar los bordes detectados
 void verifyEdges(cv::Mat& image, const char* window_name) {
     // Aplicar detección de bordes de Canny
     cv::Mat edges;
@@ -133,7 +138,7 @@ void verifyEdges(cv::Mat& image, const char* window_name) {
     memcpy(image.data, edges.data, image.total() * image.elemSize());
 }
 
-// Modificar la función drawDetectedLines
+// Función para dibujar las líneas detectadas
 void drawDetectedLines(cv::Mat &image, int *acc, int w, int h, float rMax, float rScale, int threshold) {
     printf("Iniciando drawDetectedLines\n");
 
@@ -170,9 +175,11 @@ void drawDetectedLines(cv::Mat &image, int *acc, int w, int h, float rMax, float
     // Vector para almacenar las líneas más fuertes
     std::vector<std::pair<cv::Point, cv::Point>> strong_lines;
 
+    // Crear una copia de la imagen original en escala de grises
     cv::Mat gray;
     cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
 
+    // Contar líneas que superan el threshold
     int lines_above_threshold = 0;
     for (int rIdx = 0; rIdx < rBins; rIdx++) {
         for (int tIdx = 0; tIdx < degreeBins; tIdx++) {
@@ -184,6 +191,7 @@ void drawDetectedLines(cv::Mat &image, int *acc, int w, int h, float rMax, float
     }
     printf("Número de líneas que superan el threshold: %d\n", lines_above_threshold);
 
+    // Dibujar solo las líneas más significativas
     for (int rIdx = 0; rIdx < rBins; rIdx++) {
         for (int tIdx = 0; tIdx < degreeBins; tIdx++) {
             int acc_val = acc[rIdx * degreeBins + tIdx];
@@ -202,6 +210,7 @@ void drawDetectedLines(cv::Mat &image, int *acc, int w, int h, float rMax, float
                     pt2 = cv::Point(cvRound(r), h - 1);
                 }
 
+                // Verificar que los puntos estén dentro de la imagen
                 if (pt1.x >= 0 && pt1.x < w && pt1.y >= 0 && pt1.y < h &&
                     pt2.x >= 0 && pt2.x < w && pt2.y >= 0 && pt2.y < h) {
                     strong_lines.push_back(std::make_pair(pt1, pt2));
@@ -212,6 +221,7 @@ void drawDetectedLines(cv::Mat &image, int *acc, int w, int h, float rMax, float
         }
     }
 
+    // Dibujar las líneas sobre la imagen
     for (const auto& line : strong_lines) {
         cv::line(image, line.first, line.second, cv::Scalar(0, 0, 255), 1, cv::LINE_AA);
     }
@@ -231,6 +241,7 @@ int main(int argc, char **argv) {
     int w = inImg.x_dim;
     int h = inImg.y_dim;
 
+    // Cálculo de senos y cosenos en CPU
     float *pcCos = (float *)malloc(sizeof(float) * degreeBins);
     float *pcSin = (float *)malloc(sizeof(float) * degreeBins);
     float rad = 0;
@@ -243,9 +254,13 @@ int main(int argc, char **argv) {
     float rMax = sqrt(1.0 * w * w + 1.0 * h * h) / 2;
     float rScale = 2 * rMax / rBins;
 
+    // TODO eventualmente volver memoria global
+    // Asignación de memoria en la GPU para d_Cos y d_Sin en memoria global
+    // Copiar valores de senos y cosenos a la memoria constante del device
     cudaMemcpyToSymbol(d_Cos, pcCos, sizeof(float) * degreeBins);
     cudaMemcpyToSymbol(d_Sin, pcSin, sizeof(float) * degreeBins);
 
+    // Configuración y copia de datos del host al device
     unsigned char *d_in, *h_in;
     int *d_hough, *h_hough;
 
@@ -257,6 +272,7 @@ int main(int argc, char **argv) {
     cudaMemcpy(d_in, h_in, sizeof(unsigned char) * w * h, cudaMemcpyHostToDevice);
     cudaMemset(d_hough, 0, sizeof(int) * degreeBins * rBins);
 
+    // Medición de tiempo usando CUDA events
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
@@ -264,9 +280,12 @@ int main(int argc, char **argv) {
     printf("Iniciando el kernel\n");
     cudaEventRecord(start);
 
+    // execution configuration uses a 1-D grid of 1-D blocks, each made of 256 threads
+    //1 thread por pixel
     int blockNum = ceil(w * h / 256.0);
     GPU_HoughTran<<<blockNum, 256, degreeBins * rBins * sizeof(int)>>>(d_in, w, h, d_hough, rMax, rScale);
 
+    // Verificar errores de ejecución del kernel
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
         fprintf(stderr, "Error en la ejecución del kernel: %s\n", cudaGetErrorString(err));
@@ -295,22 +314,29 @@ int main(int argc, char **argv) {
     }
     printf("Datos copiados de la GPU a la CPU\n");
 
+    // Crear una matriz de OpenCV a partir de la imagen de entrada
     cv::Mat img(h, w, CV_8UC1, inImg.pixels);
 
+    // Verificar los bordes antes de procesar
     verifyEdges(img, "Edges");
 
+    // Actualizar los pixels de la imagen original con los bordes detectados
     memcpy(inImg.pixels, img.data, w * h);
 
     cv::Mat colorImg;
     cv::cvtColor(img, colorImg, cv::COLOR_GRAY2BGR);
 
+    // Establecer un threshold inicial razonable
     int threshold = 50;
 
+    // Dibujar las líneas detectadas
     drawDetectedLines(colorImg, h_hough, w, h, rMax, rScale, threshold);
 
+    // Guardar la imagen de salida con las líneas detectadas
     cv::imwrite("output_image.jpg", colorImg);
     printf("Imagen de salida guardada como 'output_image.jpg'\n");
 
+    // Liberación de memoria
     free(pcCos);
     free(pcSin);
     free(h_hough);
