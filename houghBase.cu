@@ -102,8 +102,8 @@ void verifyEdges(cv::Mat& image, const char* window_name) {
     cv::Canny(image, edges, 50, 150);
     
     // Guardar la imagen de bordes para verificación
-    cv::imwrite("edges_detected.jpg", edges);
-    printf("Imagen de bordes guardada como 'edges_detected.jpg'\n");
+    cv::imwrite("output_edges_detected.jpg", edges);
+    printf("Imagen de bordes guardada como 'output_edges_detected.jpg'\n");
     
     // Copiar los bordes detectados de vuelta a la imagen original
     memcpy(image.data, edges.data, image.total() * image.elemSize());
@@ -136,11 +136,11 @@ void drawDetectedLines(cv::Mat &image, int *acc, int w, int h, float rMax, float
     int dynamic_threshold = (int)(mean + 3 * std_dev); // Aumentado a 3 desviaciones estándar
     threshold = std::max(dynamic_threshold, threshold);
     
-    printf("Estadísticas del acumulador:\n");
+    printf("Estadisticas del acumulador:\n");
     printf("Media: %.2f\n", mean);
-    printf("Desviación estándar: %.2f\n", std_dev);
-    printf("Valor máximo: %.2f\n", max_val);
-    printf("Threshold dinámico: %d\n", dynamic_threshold);
+    printf("Desviacion estandar: %.2f\n", std_dev);
+    printf("Valor maximo: %.2f\n", max_val);
+    printf("Threshold dinamico: %d\n", dynamic_threshold);
     printf("Threshold final: %d\n", threshold);
     
     // Vector para almacenar las líneas más fuertes
@@ -160,7 +160,7 @@ void drawDetectedLines(cv::Mat &image, int *acc, int w, int h, float rMax, float
             }
         }
     }
-    printf("Número de líneas que superan el threshold: %d\n", lines_above_threshold);
+    printf("Numero de lineas que superan el threshold: %d\n", lines_above_threshold);
     
     // Dibujar solo las líneas más significativas
     for (int rIdx = 0; rIdx < rBins; rIdx++) {
@@ -185,7 +185,7 @@ void drawDetectedLines(cv::Mat &image, int *acc, int w, int h, float rMax, float
                 if (pt1.x >= 0 && pt1.x < w && pt1.y >= 0 && pt1.y < h &&
                     pt2.x >= 0 && pt2.x < w && pt2.y >= 0 && pt2.y < h) {
                     strong_lines.push_back(std::make_pair(pt1, pt2));
-                    printf("Línea detectada: (%d,%d) -> (%d,%d) con peso %d\n", 
+                    printf("Linea detectada: (%d,%d) -> (%d,%d) con peso %d\n", 
                            pt1.x, pt1.y, pt2.x, pt2.y, acc_val);
                 }
             }
@@ -198,7 +198,7 @@ void drawDetectedLines(cv::Mat &image, int *acc, int w, int h, float rMax, float
         cv::line(image, line.first, line.second, cv::Scalar(0, 0, 255), 1, cv::LINE_AA);
     }
     
-    printf("Finalizando drawDetectedLines - Se dibujaron %zu líneas\n", strong_lines.size());
+    printf("Finalizando drawDetectedLines - Se dibujaron %zu lineas\n", strong_lines.size());
 }
 
 //*****************************************************************
@@ -256,7 +256,7 @@ int main(int argc, char **argv) {
     // Verificar errores de ejecución del kernel
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
-        fprintf(stderr, "Error en la ejecución del kernel: %s\n", cudaGetErrorString(err));
+        fprintf(stderr, "Error en la ejecucion del kernel: %s\n", cudaGetErrorString(err));
         return -1;
     }
 
@@ -273,7 +273,7 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    printf("Tiempo de ejecución del kernel: %.3f ms\n", milliseconds);
+    printf("Tiempo de ejecucion del kernel: %.3f ms\n", milliseconds);
 
     err = cudaMemcpy(h_hough, d_hough, sizeof(int) * degreeBins * rBins, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess) {
