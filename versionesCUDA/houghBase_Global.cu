@@ -36,20 +36,20 @@ void CPU_HoughTran(unsigned char *pic, int w, int h, int **acc) {
     int yCent = h / 2;
     float rScale = 2 * rMax / rBins;
 
-    for (int i = 0; i < w; i++) //por cada pixel
-      for (int j = 0; j < h; j++) //...
+    for (int i = 0; i < w; i++)
+      for (int j = 0; j < h; j++)
         {
           int idx = j * w + i;
-          if (pic[idx] > 0) //si pasa thresh, entonces lo marca
+          if (pic[idx] > 0)
             {
               int xCoord = i - xCent;
-              int yCoord = yCent - j;  // y-coord has to be reversed
-              float theta = 0;         // actual angle
-              for (int tIdx = 0; tIdx < degreeBins; tIdx++) //add 1 to all lines in that pixel
+              int yCoord = yCent - j;
+              float theta = 0;
+              for (int tIdx = 0; tIdx < degreeBins; tIdx++)
                 {
                   float r = xCoord * cos (theta) + yCoord * sin (theta);
                   int rIdx = (r + rMax) / rScale;
-                  (*acc)[rIdx * degreeBins + tIdx]++; //+1 para este radio r y este theta
+                  (*acc)[rIdx * degreeBins + tIdx]++;
                   theta += radInc;
                 }
             }
@@ -119,7 +119,7 @@ __global__ void GPU_HoughTran(unsigned char *pic, int w, int h, int *acc, float 
     //faltara sincronizar los hilos del bloque en algunos lados
 }
 
-// Añadir esta función después de cargar la imagen y antes de la transformada de Hough
+// Función para verificar los bordes detectados
 void verifyEdges(cv::Mat& image, const char* window_name) {
     // Aplicar detección de bordes de Canny
     cv::Mat edges;
@@ -133,7 +133,7 @@ void verifyEdges(cv::Mat& image, const char* window_name) {
     memcpy(image.data, edges.data, image.total() * image.elemSize());
 }
 
-// Modificar la función drawDetectedLines
+// Función para dibujar las líneas detectadas
 void drawDetectedLines(cv::Mat &image, int *acc, int w, int h, float rMax, float rScale, int threshold) {
     printf("Iniciando drawDetectedLines\n");
     
